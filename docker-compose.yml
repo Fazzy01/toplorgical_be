@@ -1,0 +1,37 @@
+version: '3.8'
+services:
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      MONGO_URI: mongodb://mongo:27017/auth
+    depends_on:
+      - mongo
+
+  wallet-service:
+    build: ./wallet-service
+    ports:
+      - "3002:3002"
+    environment:
+      MONGO_URI: mongodb://mongo:27017/wallet
+    depends_on:
+      - mongo
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      - auth-service
+      - wallet-service
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
