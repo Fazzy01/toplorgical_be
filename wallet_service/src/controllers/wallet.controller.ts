@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Wallet from '../models/Wallet.model';
+import User from '../models/User.model';
 import dotenv from 'dotenv';
 import { walletTransfer, walletWithdraw } from '../services/wallet.service';
 dotenv.config();
@@ -56,27 +57,42 @@ export const getBalance = async (req: CustomRequest, res: Response) => {
   res.status(200).json({ balance: wallet.balance });
 };
 
-export const transfer = async (req: Request, res: Response) => {
-    const { recipientId, amount } = req.body;
-    // const senderId = req.user.userId; // Get sender's user ID from the authenticated request
-    // const {userId} = req.user; // Get sender's user ID from the authenticated request
+export const transfer = async (req: CustomRequest, res: Response) => {
+    const {  recipientEmail, amount } = req.body;
+    const { result: { _id, email } }= req.user// Get sender's user ID from the authenticated request
+
+    if(recipientEmail == email){
+        res.status(200).json({ success: true, message: "Cannot transfer fund to yourself " });
+        return;
+    }
+
+    const user = await User.findOne({ email: recipientEmail }).lean();
+    if (!user){
+        res.status(404).json({ message: 'User not found' });
+    }
+    let recipientId = user?._id.toString();
+    if (!recipientId) {
+        throw new Error('Recipient Email is Required');
+      }
 
     try {
-      const result = await walletTransfer("userId", recipientId, amount);
+      const result = await walletTransfer(_id, recipientId, amount);
       res.status(200).json({ success: true, result });
-    } catch (error) {
-      res.status(400).json({ success: false, message: error });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
     }
   };
 
-  export const withdraw = async (req: Request, res: Response) => {
+
+
+  export const withdraw = async (req: CustomRequest, res: Response) => {
     const { amount } = req.body;
-    // const userId = req.user.userId; // Get user ID from the authenticated request
+    const { result: { _id } }= req.user
 
     try {
-      const wallet = await walletWithdraw("userId", amount);
+      const wallet = await walletWithdraw(_id, amount);
       res.status(200).json({ success: true, wallet });
-    } catch (error) {
-      res.status(400).json({ success: false, message: error });
+    } catch (error: any) {
+        res.status(400).json({ success: false, message: error.message });
     }
   };
